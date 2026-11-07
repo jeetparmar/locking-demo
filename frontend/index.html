@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b1220"><title>Locking Lab · Flight seat booking</title><link rel="stylesheet" href="styles.css"></head>
+<body>
+<header><h1>Seat 14C, two travellers, one booking</h1>
+<p>Learn optimistic locking, pessimistic locking and isolation levels. <span class="tag sim">Simulation</span> sections only animate the idea. <span class="tag real">Real API</span> sections call Spring Boot and PostgreSQL.</p></header>
+<nav><a href="#seat">Seats</a><a href="#optimistic">Optimistic</a><a href="#pessimistic">Pessimistic</a><a href="#real">Run for real</a><a href="#isolation">Isolation</a><a href="#java">Java vs DB</a></nav>
+<main>
+<section id="seat"><h2>Choose a seat <span class="tag real">Real API</span></h2>
+<div class="key"><i class="s available"></i>Available <i class="s booked"></i>Booked <i class="s processing"></i>Processing</div>
+<div class="fuselage"><div id="grid" class="grid"></div></div>
+<p id="info" class="info">Select a seat to see its details.</p>
+<div class="row"><button id="bOpt">Book with optimistic locking</button><button id="bPes">Book with pessimistic locking</button></div></section>
+
+<section id="optimistic"><h2>Optimistic locking <span class="tag sim">Simulation</span></h2>
+<p>No lock is taken. The UPDATE only succeeds if the version is unchanged.</p>
+<div class="sim" id="simOpt"><div class="stage"><div class="box a"></div><div class="box db"></div><div class="box b"></div></div>
+<div class="row"><button data-sim="simOpt" data-act="start">Start simulation</button><button data-sim="simOpt" data-act="next">Next step</button><button data-sim="simOpt" data-act="auto">Run automatically</button><button class="ghost" data-sim="simOpt" data-act="reset">Reset simulation</button></div>
+<ol class="timeline"></ol><p class="why"></p></div></section>
+
+<section id="pessimistic"><h2>Pessimistic locking <span class="tag sim">Simulation</span></h2>
+<p>The first transaction locks the row with SELECT ... FOR UPDATE. Everyone else waits.</p>
+<div class="sim" id="simPes"><div class="stage"><div class="box a"></div><div class="box db"></div><div class="box b"></div></div>
+<div class="row"><button data-sim="simPes" data-act="start">Start simulation</button><button data-sim="simPes" data-act="next">Next step</button><button data-sim="simPes" data-act="auto">Run automatically</button><button class="ghost" data-sim="simPes" data-act="reset">Reset simulation</button></div>
+<ol class="timeline"></ol><p class="why"></p></div></section>
+
+<section id="real"><h2>Run it for real <span class="tag real">Real API</span></h2>
+<p>Uses the selected seat. Concurrent runs reset the seat, then fire all requests at the same moment. The backend adds 30 ms of work inside each transaction so races are visible.</p>
+<div class="row"><button data-c="optimistic" data-n="10">10 users · optimistic</button><button data-c="optimistic" data-n="20">20 users · optimistic</button><button data-c="pessimistic" data-n="10">10 users · pessimistic</button><button data-c="pessimistic" data-n="20">20 users · pessimistic</button><button class="ghost" id="bReset">Reset seat</button></div>
+<div id="summary" class="summary"></div>
+<table id="results"><thead><tr><th>User</th><th>Result</th><th>Explanation</th><th>ms</th></tr></thead><tbody></tbody></table>
+<h3>Last request</h3><pre id="log">Nothing sent yet.</pre>
+<p class="note"><b>Retrying (optimistic):</b> on a 409 the client reloads the seat and tries again, usually 2 to 3 times. Here the retry would find the seat booked, so it stops. <b>Short transactions (pessimistic):</b> every waiter holds a database connection while it blocks, so long transactions exhaust the pool.</p></section>
+
+<section id="isolation"><h2>Transactions and isolation <span class="tag sim">Simulation</span></h2>
+<p><b>@Transactional</b> wraps a method in one transaction. It commits when the method returns. It rolls back on unchecked exceptions by default; checked exceptions need <code>rollbackFor</code>. Pick a level to see what it allows:</p>
+<select id="iso"><option>READ_UNCOMMITTED</option><option selected>READ_COMMITTED</option><option>REPEATABLE_READ</option><option>SERIALIZABLE</option></select>
+<table><thead><tr><th>Anomaly</th><th>Allowed?</th><th>Example on a seat</th></tr></thead><tbody id="isoBody"></tbody></table>
+<p class="note">PostgreSQL runs READ_UNCOMMITTED as READ_COMMITTED (no dirty reads ever), and REPEATABLE_READ also blocks phantoms.</p></section>
+
+<section id="java"><h2>Java locks vs database locks</h2>
+<table><thead><tr><th>Mechanism</th><th>Protects</th><th>Safe across app instances?</th></tr></thead><tbody>
+<tr><td>synchronized</td><td>Code in one JVM</td><td>No</td></tr><tr><td>ReentrantLock</td><td>Code in one JVM, with timeouts</td><td>No</td></tr>
+<tr><td>Optimistic (@Version)</td><td>The row, checked at write time</td><td>Yes</td></tr><tr><td>Pessimistic (FOR UPDATE)</td><td>The row, locked while you work</td><td>Yes</td></tr></tbody></table>
+<div class="stage two"><div class="box"><h4>Instance 1</h4>synchronized lock #1<br>books seat 14C</div><div class="box db"><h4>PostgreSQL</h4>one row, 14C<br>double booked if nothing in the database stops it</div><div class="box"><h4>Instance 2</h4>synchronized lock #2<br>books seat 14C</div></div>
+<p class="note">Each JVM owns its own monitor, so instance 2 never sees instance 1's lock. Only the database sees both.</p></section>
+</main><script src="script.js"></script></body></html>

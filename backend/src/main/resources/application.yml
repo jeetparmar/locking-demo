@@ -1,0 +1,16 @@
+spring:
+    datasource:
+        url: jdbc:postgresql://localhost:5432/lockingdb
+        username: postgres
+        password: postgres
+        hikari:
+            maximum-pool-size: 40
+            # PostgreSQL ignores Hibernate's lock-timeout hint, so set it per connection:
+            # a blocked SELECT ... FOR UPDATE fails after 5s -> PessimisticLockingFailureException
+            connection-init-sql: SET lock_timeout = 5000
+    jpa:
+        hibernate.ddl-auto: update
+        open-in-view: false
+        show-sql: true
+demo:
+    work-millis: 30 # simulated business work INSIDE the transaction, widens the race window
